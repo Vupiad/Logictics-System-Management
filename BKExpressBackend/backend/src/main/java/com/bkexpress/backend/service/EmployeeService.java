@@ -19,6 +19,7 @@ public class EmployeeService {
     @Autowired private TaiXeLienTinhRepository txLienTinhRepo;
     @Autowired private QuanLyNoiThanhRepository qlNoiThanhRepo;
     @Autowired private QuanLyLienTinhRepository qlLienTinhRepo;
+    @Autowired private NhanVienRepository nhanVienRepo;
 
 
     private void updateNhanVienCommon(NhanVien nvCu, NhanVien nvMoi) {
@@ -32,7 +33,10 @@ public class EmployeeService {
         nvCu.setSoNgayLamViec(nvMoi.getSoNgayLamViec());
         // Không cập nhật CCCD, Ma_NV, Ma_TK (thường là cố định)
     }
-
+    // get all employees
+    public List<NhanVien> getAllEmployees() {
+        return nhanVienRepo.findAll();
+    }
     // ================= 1. NHÂN VIÊN KHO =================
     public List<NhanVienKho> getAllKho() { return khoRepo.findAll(); }
 

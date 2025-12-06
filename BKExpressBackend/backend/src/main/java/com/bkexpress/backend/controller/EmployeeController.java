@@ -10,12 +10,15 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/employees")
-@CrossOrigin(origins = "http://localhost:3000")
 public class EmployeeController {
 
     @Autowired
     private EmployeeService service;
 
+    @GetMapping("/all")
+    public List<NhanVien> getAllEmployees() {
+        return service.getAllEmployees();
+    }
     // ================= 1. KHO =================
     @GetMapping("/kho")
     public List<NhanVienKho> getKho() { return service.getAllKho(); }
