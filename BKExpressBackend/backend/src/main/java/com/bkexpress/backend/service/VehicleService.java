@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -91,5 +92,18 @@ public class VehicleService {
             // rootCause.getMessage() sẽ là: "Không thể xóa: Phương tiện đang trong quá trình vận chuyển."
             throw new RuntimeException(rootCause.getMessage());
         }
+    }
+    public List<Map<String, Object>> getVehiclesWithManager(String trangThai, String sapXep) {
+        // Có thể thêm logic validate tham số ở đây nếu cần
+        return vehicleRepository.getVehiclesWithManager(trangThai, sapXep);
+    }
+
+    // --- MỚI: Thống kê hiệu suất quản lý (Màn hình 2.3) ---
+    public List<Map<String, Object>> getManagerStats(Integer min) {
+        // Xử lý mặc định nếu min null (dù Controller đã set defaultValue, check lại cho an toàn)
+        if (min == null || min < 0) {
+            min = 0;
+        }
+        return vehicleRepository.getManagerStats(min);
     }
 }

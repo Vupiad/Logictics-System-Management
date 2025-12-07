@@ -6,6 +6,9 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+import java.util.Map;
+
 public interface VehicleRepository extends JpaRepository<Vehicle, String> {
     @Modifying // Bắt buộc vì SP này làm thay đổi dữ liệu (Delete/Update)
     @Query(value = "EXEC sp_DeleteVehicle :bienSoXe", nativeQuery = true)
@@ -31,4 +34,13 @@ public interface VehicleRepository extends JpaRepository<Vehicle, String> {
             @Param("loaiXe") String loaiXe,
             @Param("viTri") String viTri
     );
+    @Query(value = "EXEC sp_LayXeVaQuanLyLienTinh :trangThai, :sapXep", nativeQuery = true)
+    List<Map<String, Object>> getVehiclesWithManager(
+            @Param("trangThai") String trangThai,
+            @Param("sapXep") String sapXep
+    );
+
+    // 2. Gọi SP thống kê xe của Quản lý
+    @Query(value = "EXEC sp_ThongKeXeCuaQuanLy :soLuong", nativeQuery = true)
+    List<Map<String, Object>> getManagerStats(@Param("soLuong") Integer soLuong);
 }

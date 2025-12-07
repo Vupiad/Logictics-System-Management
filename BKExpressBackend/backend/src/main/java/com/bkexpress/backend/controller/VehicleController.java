@@ -48,4 +48,20 @@ public class VehicleController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+    // GET http://localhost:8080/api/vehicles/list-manager?trangThai=SanSang&sapXep=TaiTrong
+    @GetMapping("/list-manager")
+    public ResponseEntity<?> getListWithManager(
+            @RequestParam(required = false) String trangThai,
+            @RequestParam(defaultValue = "TaiTrong") String sapXep) {
+
+        return ResponseEntity.ok(vehicleService.getVehiclesWithManager(trangThai, sapXep));
+    }
+
+    // GET http://localhost:8080/api/vehicles/manager-stats?min=1
+    @GetMapping("/manager-stats")
+    public ResponseEntity<?> getManagerStats(@RequestParam(defaultValue = "1") Integer min) {
+
+        return ResponseEntity.ok(vehicleService.getManagerStats(min));
+    }
+
 }
