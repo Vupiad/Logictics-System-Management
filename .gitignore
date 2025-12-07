@@ -1,0 +1,36 @@
+# ==== Java / Maven / Gradle ====
+/target/
+/build/
+/out/
+
+# ==== IntelliJ IDEA / VSCode / Eclipse ====
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+*.classpath
+*.project
+*.settings/
+
+# ==== Logs ====
+*.log
+logs/
+*.tmp
+
+# ==== OS files ====
+.DS_Store
+Thumbs.db
+
+# ==== Spring Boot configuration ====
+# Bỏ qua file cấu hình môi trường (application.properties)
+**/application.properties
+
+# ==== Optional: IDE-specific workspace settings ====
+*.swp
+*.swo
+
+# ==== Dependency caches ====
+*.jar
+*.war
+*.ear
