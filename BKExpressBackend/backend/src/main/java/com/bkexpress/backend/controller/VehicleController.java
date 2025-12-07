@@ -19,20 +19,33 @@ public class VehicleController {
         return vehicleService.getAllVehicles();
     }
     @PostMapping
-    public Vehicle create(@RequestBody Vehicle vehicle){
-        return vehicleService.saveVehicle(vehicle);
-    }
-    @PutMapping("/{bien_so_xe}")
-    public ResponseEntity<Vehicle> update(@PathVariable String bien_so_xe, @RequestBody Vehicle vehicle){
+    public ResponseEntity<?> create(@RequestBody Vehicle xe) {
         try {
-            return ResponseEntity.ok(vehicleService.updateVehicle(bien_so_xe, vehicle));
-        } catch (RuntimeException e){
-            return ResponseEntity.notFound().build();
+            vehicleService.addVehicle(xe);
+            return ResponseEntity.ok("Thêm xe thành công: " + xe.getBienSoXe());
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
-    @DeleteMapping("/{bien_so_xe}")
-    public ResponseEntity<Void> delete(@PathVariable String bien_so_xe){
-        vehicleService.deleteVehicle(bien_so_xe);
-        return ResponseEntity.ok().build();
+    @PutMapping("/{bienSo}")
+    public ResponseEntity<?> update(@PathVariable String bienSo, @RequestBody Vehicle xe) {
+        // Gán lại biển số từ URL vào object để đảm bảo consistency
+        xe.setBienSoXe(bienSo);
+        try {
+            vehicleService.updateVehicle(bienSo, xe);
+            return ResponseEntity.ok("Cập nhật xe thành công!");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    @DeleteMapping("/{bienSoXe}")
+    public ResponseEntity<?> deleteVehicle(@PathVariable String bienSoXe) {
+        try {
+            vehicleService.deleteVehicle(bienSoXe);
+            return ResponseEntity.ok("Xóa phương tiện thành công!");
+        } catch (RuntimeException e) {
+            // Trả về lỗi 400 Bad Request kèm lý do (ví dụ: Xe đang bận)
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }
