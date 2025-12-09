@@ -1,0 +1,1 @@
+EXEC sp_ThongKeXeCuaQuanLy 1
