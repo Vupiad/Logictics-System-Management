@@ -106,4 +106,19 @@ public class VehicleService {
         }
         return vehicleRepository.getManagerStats(min);
     }
+    @Transactional
+    public void assignManagerToVehicle(String bienSo, String cccdQuanLy) {
+        // Kiểm tra xe có tồn tại không
+        if (!vehicleRepository.existsById(bienSo)) {
+            throw new RuntimeException("Biển số xe không tồn tại: " + bienSo);
+        }
+
+        if (cccdQuanLy == null || cccdQuanLy.trim().isEmpty()) {
+            // Trường hợp 1: Không chọn quản lý -> Xóa phân công cũ (nếu có)
+            vehicleRepository.removeManager(bienSo);
+        } else {
+            // Trường hợp 2: Có chọn quản lý -> Gán mới hoặc Update
+            vehicleRepository.assignManager(bienSo, cccdQuanLy);
+        }
+    }
 }

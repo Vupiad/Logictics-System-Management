@@ -47,7 +47,7 @@ export function ManagerDashboard() {
         <div className="flex items-end gap-4">
           <div className="flex-1 max-w-xs">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Số lượng xe quản lý tối thiểu (HAVING)
+              Số lượng xe quản lý tối thiểu
             </label>
             <div className="relative">
               <input
@@ -61,7 +61,7 @@ export function ManagerDashboard() {
           </div>
           <button
             onClick={fetchStats}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors h-[42px]"
+            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors border border-transparent"
           >
             <Search className="w-4 h-4" />
             Xem Báo Cáo

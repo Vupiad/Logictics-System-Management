@@ -34,3 +34,5 @@ Thumbs.db
 *.jar
 *.war
 *.ear
+
+node_modules/

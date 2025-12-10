@@ -2,6 +2,7 @@ package com.bkexpress.backend.controller;
 
 import com.bkexpress.backend.entity.Vehicle;
 import com.bkexpress.backend.service.VehicleService;
+import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -62,6 +63,24 @@ public class VehicleController {
     public ResponseEntity<?> getManagerStats(@RequestParam(defaultValue = "1") Integer min) {
 
         return ResponseEntity.ok(vehicleService.getManagerStats(min));
+    }
+
+    @Data
+    public static class AssignManagerRequest {
+        private String bienSoXe;
+        private String cccdQuanLy;
+    }
+
+    // API: Gán quản lý cho xe
+    // POST http://localhost:8080/api/vehicles/assign-manager
+    @PostMapping("/assign-manager")
+    public ResponseEntity<?> assignManager(@RequestBody AssignManagerRequest req) {
+        try {
+            vehicleService.assignManagerToVehicle(req.getBienSoXe(), req.getCccdQuanLy());
+            return ResponseEntity.ok("Cập nhật quản lý thành công!");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
 }
