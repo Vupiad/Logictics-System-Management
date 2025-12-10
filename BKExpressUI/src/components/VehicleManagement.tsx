@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Truck, Gauge } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Truck, Gauge, AlertCircle } from 'lucide-react';
 
 type VehicleStatus = 'SanSang' | 'DangVanChuyen';
 
@@ -14,7 +14,8 @@ type Vehicle = {
 export function VehicleManagement() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); // Global error (e.g., fetch failure)
+  const [formError, setFormError] = useState<string | null>(null); // Modal-specific error
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -66,8 +67,9 @@ export function VehicleManagement() {
   );
 
   const handleAddVehicle = async () => {
+    setFormError(null); // Clear previous errors
     if (!formData.bienSoXe || !formData.loaiXe || !formData.viTriDo) {
-      setError('Vui lòng điền đầy đủ thông tin');
+      setFormError('Vui lòng điền đầy đủ thông tin bắt buộc (*)');
       return;
     }
     try {
@@ -84,10 +86,19 @@ export function VehicleManagement() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+
       if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, body: ${errorData}`);
+        // Try to parse JSON error first, else text
+        let errorMsg = `Lỗi ${response.status}`;
+        try {
+            const errorData = await response.json(); // Expecting JSON from backend
+            errorMsg = errorData.message || errorData.error || await response.text();
+        } catch {
+            errorMsg = await response.text();
+        }
+        throw new Error(errorMsg);
       }
+
       console.log('Vehicle added successfully');
       setShowAddModal(false);
       resetForm();
@@ -95,15 +106,16 @@ export function VehicleManagement() {
       await fetchVehicles();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Error adding vehicle';
-      setError(errorMsg);
+      setFormError(errorMsg); // Show error in modal
       console.error('Add error:', err);
     }
   };
 
   const handleUpdateVehicle = async () => {
+    setFormError(null); // Clear previous errors
     if (!selectedVehicle) return;
     if (!formData.bienSoXe || !formData.loaiXe || !formData.viTriDo) {
-      setError('Vui lòng điền đầy đủ thông tin');
+      setFormError('Vui lòng điền đầy đủ thông tin bắt buộc (*)');
       return;
     }
     try {
@@ -120,10 +132,18 @@ export function VehicleManagement() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+
       if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, body: ${errorData}`);
+         let errorMsg = `Lỗi ${response.status}`;
+         try {
+             const errorData = await response.json();
+             errorMsg = errorData.message || errorData.error || await response.text();
+         } catch {
+             errorMsg = await response.text();
+         }
+         throw new Error(errorMsg);
       }
+
       console.log('Vehicle updated successfully');
       setShowEditModal(false);
       resetForm();
@@ -132,7 +152,7 @@ export function VehicleManagement() {
       await fetchVehicles();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Error updating vehicle';
-      setError(errorMsg);
+      setFormError(errorMsg); // Show error in modal
       console.error('Update error:', err);
     }
   };
@@ -146,13 +166,14 @@ export function VehicleManagement() {
         });
         if (!response.ok) {
           const errorData = await response.text();
-          throw new Error(`HTTP error! status: ${response.status}, body: ${errorData}`);
+          throw new Error(errorData || `HTTP error! status: ${response.status}`);
         }
         console.log('Vehicle deleted successfully');
         setError(null);
         await fetchVehicles();
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Error deleting vehicle';
+        // Delete errors are shown globally since there's no modal
         setError(errorMsg);
         console.error('Delete error:', err);
       }
@@ -160,6 +181,7 @@ export function VehicleManagement() {
   };
 
   const openEditModal = (vehicle: Vehicle) => {
+    setFormError(null);
     setSelectedVehicle(vehicle);
     setFormData({
       bienSoXe: vehicle.bienSoXe,
@@ -171,6 +193,12 @@ export function VehicleManagement() {
     setShowEditModal(true);
   };
 
+  const openAddModal = () => {
+      setFormError(null);
+      resetForm();
+      setShowAddModal(true);
+  }
+
   const resetForm = () => {
     setFormData({
       bienSoXe: '',
@@ -179,6 +207,7 @@ export function VehicleManagement() {
       trangThai: 'SanSang',
       viTriDo: '',
     });
+    setFormError(null);
   };
 
   const updateVehicleStatus = async (bienSoXe: string, newStatus: VehicleStatus) => {
@@ -192,7 +221,10 @@ export function VehicleManagement() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!response.ok) throw new Error('Failed to update status');
+      if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(errText || 'Failed to update status');
+      }
       await fetchVehicles();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error updating status');
@@ -201,9 +233,10 @@ export function VehicleManagement() {
 
   return (
     <div className="space-y-6">
-      {/* Error Message */}
+      {/* Global Error Message (For fetch/delete) */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex items-center gap-2">
+          <AlertCircle className="w-5 h-5" />
           {error}
         </div>
       )}
@@ -222,7 +255,7 @@ export function VehicleManagement() {
           <div className="flex justify-between items-center">
             <h2 className="text-gray-900">Quản Lý Phương Tiện</h2>
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={openAddModal}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Plus className="w-5 h-5" />
@@ -286,7 +319,7 @@ export function VehicleManagement() {
                 <tr>
                   <th className="px-6 py-3 text-left text-gray-700">Biển Số</th>
                   <th className="px-6 py-3 text-left text-gray-700">Loại Xe</th>
-                  <th className="px-6 py-3 text-left text-gray-700">Tải Trọng (kg)</th>
+                  <th className="px-6 py-3 text-left text-gray-700">Tải Trọng (Tấn)</th>
                   <th className="px-6 py-3 text-left text-gray-700">Vị Trí Đỗ</th>
                   <th className="px-6 py-3 text-left text-gray-700">Trạng Thái</th>
                   <th className="px-6 py-3 text-left text-gray-700">Thao Tác</th>
@@ -342,10 +375,19 @@ export function VehicleManagement() {
           {showAddModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
               <div className="bg-white rounded-lg max-w-md w-full p-6">
-                <h3 className="text-gray-900 mb-4">Thêm Phương Tiện Mới</h3>
+                <h3 className="text-gray-900 mb-4 text-lg font-bold">Thêm Phương Tiện Mới</h3>
+
+                {/* Modal Error Message */}
+                {formError && (
+                  <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded text-sm flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>{formError}</span>
+                  </div>
+                )}
+
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-gray-700 mb-1">Biển số xe *</label>
+                    <label className="block text-gray-700 mb-1 font-medium">Biển số xe *</label>
                     <input
                       type="text"
                       value={formData.bienSoXe}
@@ -355,7 +397,7 @@ export function VehicleManagement() {
                     />
                   </div>
                   <div>
-                    <label className="block text-gray-700 mb-1">Loại xe *</label>
+                    <label className="block text-gray-700 mb-1 font-medium">Loại xe *</label>
                     <input
                       type="text"
                       value={formData.loaiXe}
@@ -365,7 +407,7 @@ export function VehicleManagement() {
                     />
                   </div>
                   <div>
-                    <label className="block text-gray-700 mb-1">Tải trọng (kg)</label>
+                    <label className="block text-gray-700 mb-1 font-medium">Tải trọng (Tấn)</label>
                     <input
                       type="number"
                       value={formData.taiTrong}
@@ -374,7 +416,7 @@ export function VehicleManagement() {
                     />
                   </div>
                   <div>
-                    <label className="block text-gray-700 mb-1">Trạng thái</label>
+                    <label className="block text-gray-700 mb-1 font-medium">Trạng thái</label>
                     <select
                       value={formData.trangThai}
                       onChange={(e) =>
@@ -387,7 +429,7 @@ export function VehicleManagement() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-gray-700 mb-1">Vị trí đỗ xe *</label>
+                    <label className="block text-gray-700 mb-1 font-medium">Vị trí đỗ xe *</label>
                     <input
                       type="text"
                       value={formData.viTriDo}
@@ -400,7 +442,7 @@ export function VehicleManagement() {
                 <div className="flex gap-3 mt-6">
                   <button
                     onClick={handleAddVehicle}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                   >
                     Thêm
                   </button>
@@ -409,7 +451,7 @@ export function VehicleManagement() {
                       setShowAddModal(false);
                       resetForm();
                     }}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                   >
                     Hủy
                   </button>
@@ -422,19 +464,28 @@ export function VehicleManagement() {
           {showEditModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
               <div className="bg-white rounded-lg max-w-md w-full p-6">
-                <h3 className="text-gray-900 mb-4">Cập Nhật Phương Tiện</h3>
+                <h3 className="text-gray-900 mb-4 text-lg font-bold">Cập Nhật Phương Tiện</h3>
+
+                {/* Modal Error Message */}
+                {formError && (
+                  <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded text-sm flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>{formError}</span>
+                  </div>
+                )}
+
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-gray-700 mb-1">Biển số xe</label>
+                    <label className="block text-gray-700 mb-1 font-medium">Biển số xe</label>
                     <input
                       type="text"
                       value={formData.bienSoXe}
                       disabled
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                     />
                   </div>
                   <div>
-                    <label className="block text-gray-700 mb-1">Loại xe *</label>
+                    <label className="block text-gray-700 mb-1 font-medium">Loại xe *</label>
                     <input
                       type="text"
                       value={formData.loaiXe}
@@ -443,7 +494,7 @@ export function VehicleManagement() {
                     />
                   </div>
                   <div>
-                    <label className="block text-gray-700 mb-1">Tải trọng (kg)</label>
+                    <label className="block text-gray-700 mb-1 font-medium">Tải trọng (Tấn)</label>
                     <input
                       type="number"
                       value={formData.taiTrong}
@@ -452,7 +503,7 @@ export function VehicleManagement() {
                     />
                   </div>
                   <div>
-                    <label className="block text-gray-700 mb-1">Trạng thái</label>
+                    <label className="block text-gray-700 mb-1 font-medium">Trạng thái</label>
                     <select
                       value={formData.trangThai}
                       onChange={(e) =>
@@ -465,7 +516,7 @@ export function VehicleManagement() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-gray-700 mb-1">Vị trí đỗ xe *</label>
+                    <label className="block text-gray-700 mb-1 font-medium">Vị trí đỗ xe *</label>
                     <input
                       type="text"
                       value={formData.viTriDo}
@@ -477,7 +528,7 @@ export function VehicleManagement() {
                 <div className="flex gap-3 mt-6">
                   <button
                     onClick={handleUpdateVehicle}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                   >
                     Cập nhật
                   </button>
@@ -487,7 +538,7 @@ export function VehicleManagement() {
                       resetForm();
                       setSelectedVehicle(null);
                     }}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                   >
                     Hủy
                   </button>
