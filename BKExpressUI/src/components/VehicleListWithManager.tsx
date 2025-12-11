@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Phone, Filter, ArrowUpDown, Plus, Edit, X, Save, Trash2 } from 'lucide-react';
+import { Search, Phone, Filter, ArrowUpDown, Plus, Edit, X, Save, Trash2, AlertCircle } from 'lucide-react';
 
 type VehicleWithManager = {
   bien_so_xe: string;
@@ -21,7 +21,10 @@ export function VehicleListWithManager() {
   const [vehicles, setVehicles] = useState<VehicleWithManager[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  // Error States
+  const [error, setError] = useState<string | null>(null); // Lỗi Global (Fetch/Delete)
+  const [formError, setFormError] = useState<string | null>(null); // Lỗi trong Modal (Add/Edit)
 
   const [filterStatus, setFilterStatus] = useState('');
   const [sortBy, setSortBy] = useState('BienSo');
@@ -48,6 +51,7 @@ export function VehicleListWithManager() {
   const fetchVehicles = async () => {
     try {
       setLoading(true);
+      setError(null);
       const params = new URLSearchParams();
       if (filterStatus) params.append('trangThai', filterStatus);
       params.append('sapXep', sortBy);
@@ -75,25 +79,34 @@ export function VehicleListWithManager() {
     }
   };
 
-  // --- LOGIC XÓA ---
+  // --- LOGIC XÓA (Cập nhật xử lý lỗi) ---
   const handleDelete = async (bienSoXe: string) => {
     if (!confirm(`Bạn có chắc chắn muốn xóa xe ${bienSoXe} không?`)) return;
 
     try {
-      // Gọi API xóa (sử dụng API Delete đã viết trước đó)
-      const response = await fetch(`${API_URL}/vehicles/${bienSoXe}`, {
+      const response = await fetch(`${API_URL}/vehicles/${encodeURIComponent(bienSoXe)}`, {
         method: 'DELETE',
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Xóa thất bại');
+        // Đọc lỗi an toàn
+        const errorBody = await response.text();
+        let errorMsg = `Lỗi ${response.status}`;
+        try {
+            const errorJson = JSON.parse(errorBody);
+            errorMsg = errorJson.message || errorJson.error || errorBody;
+        } catch {
+            errorMsg = errorBody || errorMsg;
+        }
+        throw new Error(errorMsg);
       }
 
-      alert('Xóa thành công!');
-      fetchVehicles(); // Load lại danh sách
+      // Xóa thành công thì clear lỗi cũ nếu có
+      setError(null);
+      fetchVehicles();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Lỗi khi xóa');
+      const msg = err instanceof Error ? err.message : 'Lỗi khi xóa';
+      setError(msg); // Hiển thị lỗi Global
     }
   };
 
@@ -103,6 +116,7 @@ export function VehicleListWithManager() {
   );
 
   const handleOpenAdd = () => {
+    setFormError(null); // Reset lỗi form
     setFormData({
       bienSoXe: '', loaiXe: '', taiTrong: 0, trangThai: 'SanSang', viTriDo: '', cccdQuanLy: ''
     });
@@ -111,6 +125,7 @@ export function VehicleListWithManager() {
   };
 
   const handleOpenEdit = (v: VehicleWithManager) => {
+    setFormError(null); // Reset lỗi form
     setFormData({
       bienSoXe: v.bien_so_xe,
       loaiXe: v.loai_xe,
@@ -123,7 +138,16 @@ export function VehicleListWithManager() {
     setIsModalOpen(true);
   };
 
+  // --- LOGIC LƯU (Cập nhật xử lý lỗi form) ---
   const handleSave = async () => {
+    setFormError(null); // Clear lỗi cũ
+
+    // Validate cơ bản
+    if (!formData.bienSoXe || !formData.loaiXe || !formData.viTriDo) {
+        setFormError("Vui lòng điền đầy đủ thông tin phương tiện.");
+        return;
+    }
+
     try {
       const vehiclePayload = {
         bienSoXe: formData.bienSoXe,
@@ -137,40 +161,55 @@ export function VehicleListWithManager() {
       let method = 'POST';
 
       if (isEditMode) {
-        url = `${API_URL}/vehicles/${formData.bienSoXe}`;
+        url = `${API_URL}/vehicles/${encodeURIComponent(formData.bienSoXe)}`;
         method = 'PUT';
       }
 
+      // 1. Lưu thông tin xe
       const resXe = await fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(vehiclePayload)
       });
 
-      if (!resXe.ok) throw new Error("Lỗi khi lưu thông tin xe");
+      if (!resXe.ok) {
+        // Đọc text ra trước để tránh lỗi "stream already read"
+        const errorBody = await resXe.text();
+        let errorMsg = `Lỗi ${resXe.status}`;
+        try {
+            const errorJson = JSON.parse(errorBody);
+            errorMsg = errorJson.message || errorJson.error || errorBody;
+        } catch {
+            errorMsg = errorBody || errorMsg;
+        }
+        throw new Error(errorMsg);
+      }
 
-      // Logic gán quản lý (Tạm thời thông báo nhắc nhở nếu chưa có API gán)
+      // 2. Gán quản lý (Luôn gọi để đồng bộ)
       const assignPayload = {
-                  bienSoXe: formData.bienSoXe,
-                  cccdQuanLy: formData.cccdQuanLy
-              };
+        bienSoXe: formData.bienSoXe,
+        cccdQuanLy: formData.cccdQuanLy
+      };
 
-              const resAssign = await fetch(`${API_URL}/vehicles/assign-manager`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(assignPayload)
-              });
+      const resAssign = await fetch(`${API_URL}/vehicles/assign-manager`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(assignPayload)
+      });
 
-              if (!resAssign.ok) {
-                  console.warn("Lưu xe thành công nhưng lỗi khi gán quản lý");
-              }
+      if (!resAssign.ok) {
+         const assignErrorText = await resAssign.text();
+         console.warn("Lỗi phân công quản lý:", assignErrorText);
+         // Tùy chọn: Có thể throw error ở đây nếu muốn bắt buộc phải gán thành công
+         // throw new Error("Lưu xe thành công nhưng lỗi gán quản lý: " + assignErrorText);
+      }
 
-              // 3. Hoàn tất
-              alert(`Đã ${isEditMode ? 'cập nhật' : 'thêm'} xe và phân công quản lý thành công!`);
-              setIsModalOpen(false);
-              fetchVehicles(); // Load lại danh sách để thấy tên quản lý mới
+      // Thành công
+      setIsModalOpen(false);
+      fetchVehicles();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Có lỗi xảy ra');
+      const msg = err instanceof Error ? err.message : 'Có lỗi xảy ra';
+      setFormError(msg); // Hiển thị lỗi ngay trong Modal
     }
   };
 
@@ -231,9 +270,11 @@ export function VehicleListWithManager() {
         </div>
       </div>
 
+      {/* Global Error (cho Delete/Fetch) */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          {error}
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex items-center gap-2">
+          <AlertCircle className="w-5 h-5" />
+          <span>{error}</span>
         </div>
       )}
 
@@ -264,7 +305,6 @@ export function VehicleListWithManager() {
                       {v.trang_thai}
                     </span>
                   </td>
-                  {/* Cột Người Quản Lý - Chỉ hiện tên Text */}
                   <td className="px-6 py-4 text-gray-900 font-medium">
                     {v.ten_quan_ly || <span className="text-gray-400 font-normal italic">Chưa phân công</span>}
                   </td>
@@ -278,7 +318,6 @@ export function VehicleListWithManager() {
                       <span className="text-gray-400">-</span>
                     )}
                   </td>
-                  {/* Cột Thao Tác - Thêm nút xóa */}
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-2">
                       <button
@@ -304,10 +343,9 @@ export function VehicleListWithManager() {
         )}
       </div>
 
-      {/* Modal Thêm/Sửa - Đã thu nhỏ chiều rộng (max-w-md) */}
+      {/* Modal Thêm/Sửa */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          {/* Changed max-w-lg to max-w-md */}
           <div className="bg-white rounded-lg w-full max-w-md p-6 shadow-xl">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-gray-900">
@@ -317,6 +355,14 @@ export function VehicleListWithManager() {
                 <X className="w-6 h-6" />
               </button>
             </div>
+
+            {/* Error Message trong Modal */}
+            {formError && (
+              <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded text-sm flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <span>{formError}</span>
+              </div>
+            )}
 
             <div className="space-y-4">
               <div>

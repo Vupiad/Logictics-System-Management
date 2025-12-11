@@ -4,6 +4,7 @@ import com.bkexpress.backend.entity.Vehicle;
 import com.bkexpress.backend.service.VehicleService;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,7 +26,7 @@ public class VehicleController {
             vehicleService.addVehicle(xe);
             return ResponseEntity.ok("Thêm xe thành công: " + xe.getBienSoXe());
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
     @PutMapping("/{bienSo}")

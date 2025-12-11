@@ -8,28 +8,25 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- VALIDATE 1: Ki?m tra d?nh d?ng bi?n s? (D� l� update nhung d?u v�o v?n ph?i chu?n)
+
     IF @BienSoXe NOT LIKE '[0-9][0-9][A-Z]-[0-9][0-9][0-9][0-9][0-9]'
     BEGIN
-        RAISERROR(N'L?i: Bi?n s? xe kh�ng d�ng d?nh d?ng (V� d?: 29A-11111).', 16, 1);
+        RAISERROR(N'Lỗi: Biển số xe không đúng định dạng (Ví dụ: 29A-11111).', 16, 1);
         RETURN;
     END
 
-    -- VALIDATE 2: Ki?m tra xe c� t?n t?i kh�ng
     IF NOT EXISTS (SELECT 1 FROM Phuong_tien_van_chuyen WHERE bien_so_xe = @BienSoXe)
     BEGIN
-        RAISERROR(N'L?i: Kh�ng t�m th?y phuong ti?n c?n c?p nh?t.', 16, 1);
+        RAISERROR(N'Lỗi: không tìm thấy phương tiện để cập nhật', 16, 1);
         RETURN;
     END
 
-    -- VALIDATE 3: Ki?m tra tr?ng th�i
     IF @TrangThai NOT IN ('SanSang', 'DangVanChuyen')
     BEGIN
-        RAISERROR(N'L?i: Tr?ng th�i ph?i l� "SanSang" ho?c "DangVanChuyen".', 16, 1);
+        RAISERROR(N'Lỗi: Trang thái phải là "SanSang" hoặc "DangVanChuyen".', 16, 1);
         RETURN;
     END
 
-    -- TH?C HI?N UPDATE
     BEGIN TRY
         UPDATE Phuong_tien_van_chuyen
         SET trang_thai = @TrangThai,

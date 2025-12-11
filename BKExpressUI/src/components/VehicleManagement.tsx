@@ -89,12 +89,13 @@ export function VehicleManagement() {
 
       if (!response.ok) {
         // Try to parse JSON error first, else text
+        const errorBody = await response.text();
         let errorMsg = `Lỗi ${response.status}`;
         try {
-            const errorData = await response.json(); // Expecting JSON from backend
-            errorMsg = errorData.message || errorData.error || await response.text();
+            const errorJson = JSON.parse(errorBody); // Expecting JSON from backend
+            errorMsg = errorJson.message || errorJson.error || errorBody;
         } catch {
-            errorMsg = await response.text();
+            errorMsg = errorBody || errorMsg;
         }
         throw new Error(errorMsg);
       }

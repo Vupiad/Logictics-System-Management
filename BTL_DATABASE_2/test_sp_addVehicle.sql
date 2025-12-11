@@ -5,6 +5,6 @@ EXEC sp_addVehicle
 	@BienSoXe = '29C-99999',
 	@TrangThai = 'SangSan',
 	@TaiTrong = 10,
-	@LoaiXe = N'Xe t?i h?ng n?ng',
-	@ViTriDo = N'Kho H� N?i';
+	@LoaiXe = N'Xe tải hạng nặng',
+	@ViTriDo = N'Kho Hà Nội';
 GO

@@ -1,1 +1,1 @@
-EXEC sp_ThongKeXeCuaQuanLy 1
+EXEC sp_LayXeVaQuanLyLienTinh SanSang, TaiTrong
